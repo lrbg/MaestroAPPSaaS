@@ -1,0 +1,26 @@
+appId: mx.com.etn.etnturistarlujo
+tags:
+  - functional
+  - search
+  - etn
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: 'Selecciona tu Origen'
+- tapOn: 'Busca tu origen'
+- inputText: 'ciudad de mexico'
+- pressKey: Enter
+- assertVisible: 'Ciudad de México, MEXICO NORTE'
+- tapOn: 'Ciudad de México, MEXICO NORTE'
+- assertVisible: 'Selecciona tu Destino'
+- tapOn: 'Selecciona tu Destino'
+- inputText: 'Guadalajara'
+- pressKey: Enter
+- tapOn: 'Guadalajara, GUADALAJARA'
+- tapOn: 'Fecha de Salida'
+- tapOn:
+    point: '64%,59%'
+- tapOn: 'BUSCAR'
+- assertNotVisible: 'Buscando horarios'
+- takeScreenshot: screenshots/etn-search-results.png

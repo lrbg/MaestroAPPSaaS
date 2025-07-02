@@ -1,0 +1,56 @@
+# .gitignore para proyecto Maestro
+
+# Dependencias de Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Screenshots y evidencia (opcional - puedes incluirlas si quieres)
+# screenshots/
+# *.png
+# *.jpg
+# *.jpeg
+
+# Logs de Maestro
+.maestro/tests/
+*.log
+
+# Archivos temporales de macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de configuración local
+.env
+.env.local
+.env.*.local
+
+# Archivos APK (opcional - normalmente no se suben)
+*.apk
+
+# Cache de npm
+.npm
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Backups
+*.backup
+*.bak
+
+# Archivos de debug específicos
+debug-*.yaml
+test-*.yaml
+recorded-*.yaml

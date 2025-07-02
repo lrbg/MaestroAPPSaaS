@@ -1,0 +1,140 @@
+appId: com.gfa.PrimeraPlus
+tags:
+  - critical
+  - booking
+  - e2e
+  - primeraplus
+---
+# Test E2E: Flujo completo basado en imágenes reales de PrimeraPlus
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+- takeScreenshot: screenshots/primeraplus/01-app-opened.png
+
+# SELECCIÓN DE ORIGEN (ya seleccionado en imagen)
+- tapOn: 'Selecciona tu Origen'
+- tapOn: 'Busca tu origen'
+- inputText: 'ciudad de mexico'
+- pressKey: Enter
+- assertVisible: 'Ciudad de México, Norte'
+- tapOn: 'Ciudad de México, Norte'
+
+# SELECCIÓN DE DESTINO
+- assertVisible: 'Selecciona tu Destino'
+- tapOn: 'Selecciona tu Destino'
+- inputText: 'Guadalajara'
+- pressKey: Enter
+
+# Esperar a que aparezcan las opciones de Guadalajara (imagen 2)
+- assertVisible: 'Guadalajara, Central Nueva'
+- tapOn: 'Guadalajara, Central Nueva'
+- takeScreenshot: screenshots/primeraplus/02-destino-selected.png
+
+# SELECCIÓN DE FECHA - usar los botones reales de la imagen 1
+- runFlow:
+    when:
+      visible: 'Hoy'
+    commands:
+      - tapOn: 'Hoy'
+      - takeScreenshot: screenshots/primeraplus/03-fecha-hoy.png
+
+- runFlow:
+    when:
+      visible: 'Mañana'
+    commands:
+      - tapOn: 'Mañana'
+      - takeScreenshot: screenshots/primeraplus/03-fecha-manana.png
+
+# Si no hay botones específicos, usar el botón "Elegir" para abrir calendario
+- runFlow:
+    when:
+      visible: 'Elegir'
+    commands:
+      - tapOn: 'Elegir'
+      - takeScreenshot: screenshots/primeraplus/03-calendario.png
+      # Seleccionar una fecha del calendario (coordenadas)
+      - tapOn:
+          point: '50%,50%'
+
+# Verificar que tenemos origen, destino y fecha
+- assertVisible: 'BUSCAR'
+- takeScreenshot: screenshots/primeraplus/04-ready-to-search.png
+
+# EJECUTAR BÚSQUEDA
+- tapOn: 'BUSCAR'
+
+# Esperar a que termine la búsqueda
+- assertNotVisible: 'Buscando horarios'
+- takeScreenshot: screenshots/primeraplus/05-search-results.png
+
+# Continuar con selección de horario...
+- tapOn:
+    point: '50%,47%'
+- waitForAnimationToEnd:
+    timeout: 15000
+
+- assertNotVisible: 'Obteniendo asientos...'
+- takeScreenshot: screenshots/primeraplus/06-seat-selection.png
+
+# SELECCIÓN DE ASIENTO
+- tapOn: '16'
+- tapOn: "Continuar con 1 asiento"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: screenshots/primeraplus/07-passenger-form.png
+
+# DATOS DEL PASAJERO
+- tapOn: 'Nombre (s)*'
+- inputText: 'Test Name'
+- pressKey: 'Enter'
+
+- tapOn: 'Primer apellido*'
+- inputText: 'Test Lastname'
+- pressKey: 'Enter'
+
+- tapOn: 'Correo Electrónico * (Obligatorio)'
+- inputText: 'test@test.com'
+- pressKey: 'Enter'
+
+- scroll
+- tapOn: 'Siguiente'
+
+# DATOS DE CONTACTO
+- tapOn: '0'
+- tapOn: 'Teléfono celular *'
+- inputText: '5511112222'
+- pressKey: 'Enter'
+
+- scroll
+- takeScreenshot: screenshots/primeraplus/08-payment-form.png
+
+# DATOS DE PAGO
+- tapOn:
+    text: 'Nombre del propietario de la tarjeta'
+    index: 1
+- inputText: 'Test User'
+
+- tapOn: "Numero de la tarjeta"
+- inputText: '4607000000000009'
+
+- tapOn: "Mes"
+- tapOn: "03"
+
+- tapOn: "Año"
+- tapOn: "2030"
+
+- scroll
+- takeScreenshot: screenshots/primeraplus/09-ready-to-confirm.png
+
+# CONFIRMAR (sin procesar pago real)
+- tapOn:
+    point: "50%,85%"
+
+- takeScreenshot: screenshots/primeraplus/10-final-result.png
+
+- evalScript: |
+    console.log("✅ PrimeraPlus booking flow completed successfully!");
+    return "flow_complete";

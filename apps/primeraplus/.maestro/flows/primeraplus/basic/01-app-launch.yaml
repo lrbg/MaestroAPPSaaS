@@ -1,0 +1,114 @@
+# .maestro/flows/primeraplus/basic/01-app-launch.yaml
+appId: com.gfa.PrimeraPlus
+tags:
+  - basic
+  - smoke
+---
+# Test básico: Verificar que PrimeraPlus se abre
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: 'Selecciona tu Origen'
+- takeScreenshot: screenshots/primeraplus/smoke-test.png
+
+---
+
+# .maestro/flows/primeraplus/functional/02-search-only.yaml
+appId: com.gfa.PrimeraPlus
+tags:
+  - functional
+  - search
+---
+# Test funcional: Solo búsqueda de rutas en PrimeraPlus
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Búsqueda básica
+- tapOn: 'Selecciona tu Origen'
+- tapOn: 'Busca tu origen'
+- inputText: 'ciudad de mexico'
+- pressKey: Enter
+- assertVisible: 'Ciudad de México, MEXICO NORTE'
+- tapOn: 'Ciudad de México, MEXICO NORTE'
+
+- assertVisible: 'Selecciona tu Destino'
+- tapOn: 'Selecciona tu Destino'
+- inputText: 'Guadalajara'
+- pressKey: Enter
+- tapOn: 'Guadalajara, GUADALAJARA'
+
+- tapOn: 'Fecha de Salida'
+- tapOn:
+    point: '64%,59%'
+
+- tapOn: 'BUSCAR'
+- assertNotVisible: 
+    text: 'Buscando horarios'
+    timeout: 30000
+
+- takeScreenshot: screenshots/primeraplus/search-results.png
+
+---
+
+# .maestro/flows/primeraplus/functional/03-seat-selection.yaml
+appId: com.gfa.PrimeraPlus
+tags:
+  - functional
+  - seats
+---
+# Test funcional: Selección de asientos
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Hacer búsqueda rápida (reutilizar pasos)
+- runFlow: 02-search-only.yaml
+
+# Seleccionar horario
+- tapOn:
+    point: '50%,47%'
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Verificar pantalla de asientos
+- assertNotVisible: 
+    text: 'Obteniendo asientos...'
+    timeout: 20000
+
+- takeScreenshot: screenshots/primeraplus/seat-map.png
+
+# Seleccionar asiento disponible
+- tapOn: '16'
+- assertVisible: "Continuar con 1 asiento"
+- takeScreenshot: screenshots/primeraplus/seat-selected.png
+
+---
+
+# .maestro/utils/handle-payment-error.yaml
+---
+# Manejar errores de pago esperados para PrimeraPlus
+
+- runFlow:
+    when:
+      visible: "Error en el pago"
+    commands:
+      - takeScreenshot: screenshots/primeraplus/payment-error.png
+      - tapOn: "Aceptar"
+
+- runFlow:
+    when:
+      visible: "Tarjeta inválida"
+    commands:
+      - takeScreenshot: screenshots/primeraplus/invalid-card.png
+      - tapOn: "OK"
+
+- runFlow:
+    when:
+      visible: "Sesión expirada"
+    commands:
+      - takeScreenshot: screenshots/primeraplus/session-expired.png
+      - tapOn: "Reintentar"

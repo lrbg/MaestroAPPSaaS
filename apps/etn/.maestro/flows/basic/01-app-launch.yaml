@@ -1,0 +1,11 @@
+appId: mx.com.etn.etnturistarlujo
+tags:
+  - basic
+  - smoke
+  - etn
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: 'Selecciona tu Origen'
+- takeScreenshot: screenshots/etn-smoke-test.png

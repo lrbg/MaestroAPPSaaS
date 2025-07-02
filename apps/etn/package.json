@@ -1,0 +1,15 @@
+{
+  "name": "etn-maestro-tests",
+  "version": "1.0.0", 
+  "description": "Tests E2E para ETN",
+  "license": "MIT",
+  "scripts": {
+    "test:smoke": "maestro test .maestro/flows/basic/01-app-launch.yaml",
+    "test:search": "maestro test .maestro/flows/functional/02-search-only.yaml",
+    "test:booking": "maestro test .maestro/flows/critical/03-complete-booking.yaml",
+    "app:open": "adb shell am start -n 'mx.com.etn.etnturistarlujo/com.reservamossaas.app.MainActivity'",
+    "app:close": "adb shell am force-stop mx.com.etn.etnturistarlujo",
+    "hierarchy": "maestro hierarchy",
+    "studio": "maestro studio"
+  }
+}

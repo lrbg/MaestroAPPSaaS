@@ -1,0 +1,32 @@
+{
+  "name": "primeraplus-maestro-tests",
+  "version": "1.0.0",
+  "description": "Tests E2E para PrimeraPlus con Maestro",
+  "license": "MIT",
+  "author": "Luis Rogelio",
+  "scripts": {
+    "setup": "mkdir -p screenshots/primeraplus && adb devices",
+    
+    "test:smoke": "maestro test .maestro/flows/primeraplus/basic/01-app-launch.yaml",
+    "test:search": "maestro test .maestro/flows/primeraplus/functional/02-search-only.yaml", 
+    "test:seats": "maestro test .maestro/flows/primeraplus/functional/03-seat-selection.yaml",
+    "test:booking": "maestro test .maestro/flows/primeraplus/complete-booking-flow.yaml",
+    "test:all": "maestro test .maestro/flows/primeraplus/",
+    "test:critical": "maestro test --tags critical .maestro/flows/",
+    
+    "test:watch": "maestro test --continuous .maestro/flows/primeraplus/basic/",
+    "test:verbose": "maestro test --verbose .maestro/flows/primeraplus/",
+    
+    "record": "maestro record .maestro/flows/primeraplus/recorded/new-flow.yaml",
+    "hierarchy": "maestro hierarchy",
+    
+    "clean": "rm -rf screenshots/primeraplus/* && mkdir -p screenshots/primeraplus",
+    
+    "app:open": "adb shell am start -n 'com.gfa.PrimeraPlus/com.reservamossaas.app.MainActivity'",
+    "app:close": "adb shell am force-stop com.gfa.PrimeraPlus",
+    
+    "emulator:start": "emulator -avd Pixel_7_API_35 &",
+    "emulator:devices": "adb devices"
+  },
+  "keywords": ["maestro", "e2e", "testing", "primeraplus", "transport", "booking", "primera"]
+}
