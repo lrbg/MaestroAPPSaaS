@@ -151,7 +151,6 @@ jobs:
               ;;
             "etn")
               echo "📱 Descargando APK ETN..."
-              # Ajustar URL según tu configuración
               wget -O ./apps/etn.apk https://appsreservamos2024r1.s3.us-east-2.amazonaws.com/etn22112024.apk || \
               wget -O ./apps/etn.apk https://appsreservamos2024r1.s3.us-east-2.amazonaws.com/gfa22112024.apk
               ;;
