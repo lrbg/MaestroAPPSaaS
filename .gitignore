@@ -25,6 +25,7 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
+
 # IDEs
 .vscode/
 .idea/
@@ -35,6 +36,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+promnt
+comandos
+
 
 # Archivos APK (opcional - normalmente no se suben)
 *.apk

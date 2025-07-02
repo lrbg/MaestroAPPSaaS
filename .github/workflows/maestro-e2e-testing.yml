@@ -1,0 +1,317 @@
+name: MaestroAPPSaaS - E2E Testing with Android Emulator
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - functional
+          - critical
+          - all
+      apps_to_test:
+        description: 'Apps to test (comma separated: primeraplus,etn or all)'
+        required: true
+        default: 'all'
+
+jobs:
+  maestro-e2e-testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [primeraplus, etn]
+
+    steps:
+      - name: Checkout MaestroAPPSaaS Repository
+        uses: actions/checkout@v4
+
+      - name: Filter Apps Based on Input
+        id: filter-apps
+        run: |
+          APPS_INPUT="${{ github.event.inputs.apps_to_test }}"
+          CURRENT_APP="${{ matrix.app }}"
+          
+          if [[ "$APPS_INPUT" == "all" ]] || [[ "$APPS_INPUT" == *"$CURRENT_APP"* ]]; then
+            echo "run_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install System Dependencies
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-11-jdk unzip wget curl qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo adduser $USER kvm
+          sudo chown $USER /dev/kvm || true
+          ls -la /dev/kvm
+
+      - name: Set up Node.js
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup Android SDK
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          cd "$HOME/android-sdk/cmdline-tools"
+          
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          
+          mkdir -p latest
+          mv cmdline-tools/* latest/
+          rmdir cmdline-tools
+          
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$HOME/android-sdk/emulator:$PATH" >> $GITHUB_ENV
+
+      - name: Install Android Tools and System Images
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "system-images;android-35;google_apis;x86_64"
+          sdkmanager "emulator"
+
+      - name: Create and Start Android Emulator
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          export ANDROID_AVD_HOME=$HOME/.android/avd
+          
+          echo "no" | avdmanager create avd \
+            -n Pixel_7_API_35 \
+            -k "system-images;android-35;google_apis;x86_64" \
+            -d pixel_7 \
+            --force
+          
+          # Optimizar configuración del emulador para CI
+          echo 'hw.cpu.ncore=2' >> ~/.android/avd/Pixel_7_API_35.avd/config.ini
+          echo 'hw.ramSize=4096' >> ~/.android/avd/Pixel_7_API_35.avd/config.ini
+          echo 'disk.dataPartition.size=4096M' >> ~/.android/avd/Pixel_7_API_35.avd/config.ini
+          echo 'hw.gpu.enabled=yes' >> ~/.android/avd/Pixel_7_API_35.avd/config.ini
+          echo 'hw.gpu.mode=swiftshader_indirect' >> ~/.android/avd/Pixel_7_API_35.avd/config.ini
+          
+          # Iniciar emulador en segundo plano
+          nohup $ANDROID_HOME/emulator/emulator \
+            -avd Pixel_7_API_35 \
+            -no-window \
+            -no-audio \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            -no-boot-anim \
+            -qemu -enable-kvm \
+            > emulator.log 2>&1 &
+          
+          # Esperar a que el emulador esté listo
+          timeout=300
+          counter=0
+          while true; do
+            if adb shell getprop sys.boot_completed 2>/dev/null | grep -q '1'; then
+              echo "✅ Emulador Android listo"
+              adb devices
+              break
+            fi
+            
+            if ! pgrep -f emulator > /dev/null; then
+              echo "❌ Error: Emulador terminó inesperadamente"
+              cat emulator.log
+              exit 1
+            fi
+            
+            if [ $counter -ge $timeout ]; then
+              echo "❌ Timeout: Emulador no se inició en $timeout segundos"
+              cat emulator.log
+              exit 1
+            fi
+            
+            echo "⏳ Iniciando emulador... ($counter/$timeout)"
+            sleep 5
+            counter=$((counter + 5))
+          done
+
+      - name: Download APK for ${{ matrix.app }}
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          mkdir -p ./apps
+          
+          case "${{ matrix.app }}" in
+            "primeraplus")
+              echo "📱 Descargando APK PrimeraPlus..."
+              wget -O ./apps/primeraplus.apk https://appsreservamos2024r1.s3.us-east-2.amazonaws.com/gfa22112024.apk
+              ;;
+            "etn")
+              echo "📱 Descargando APK ETN..."
+              # Ajustar URL según tu configuración
+              wget -O ./apps/etn.apk https://appsreservamos2024r1.s3.us-east-2.amazonaws.com/etn22112024.apk || \
+              wget -O ./apps/etn.apk https://appsreservamos2024r1.s3.us-east-2.amazonaws.com/gfa22112024.apk
+              ;;
+          esac
+          
+          ls -la ./apps/
+
+      - name: Install APK on Emulator
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          case "${{ matrix.app }}" in
+            "primeraplus")
+              adb install -r ./apps/primeraplus.apk
+              ;;
+            "etn")
+              adb install -r ./apps/etn.apk
+              ;;
+          esac
+          
+          # Verificar que la app se instaló correctamente
+          adb shell pm list packages | grep -E "(primeraplus|etn)"
+
+      - name: Install Maestro CLI
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+          # Verificar instalación
+          export PATH="$HOME/.maestro/bin:$PATH"
+          maestro --version
+
+      - name: Install App-specific Dependencies
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        working-directory: ./apps/${{ matrix.app }}
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          fi
+
+      - name: Run Maestro Tests - ${{ matrix.app }}
+        if: steps.filter-apps.outputs.run_tests == 'true'
+        working-directory: ./apps/${{ matrix.app }}
+        timeout-minutes: 60
+        env:
+          APP_NAME: ${{ matrix.app }}
+          TEST_TYPE: ${{ github.event.inputs.test_type }}
+        run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
+          
+          echo "🚀 Ejecutando tests de ${{ matrix.app }} - Tipo: ${{ github.event.inputs.test_type }}"
+          
+          # Crear directorio de screenshots si no existe
+          mkdir -p screenshots
+          
+          case "${{ github.event.inputs.test_type }}" in
+            "smoke")
+              echo "🧪 Ejecutando smoke tests..."
+              npm run test:smoke 2>&1 | tee ../test-results-${{ matrix.app }}-smoke.log
+              ;;
+            "functional")
+              echo "⚙️ Ejecutando functional tests..."
+              npm run test:functional 2>&1 | tee ../test-results-${{ matrix.app }}-functional.log || true
+              ;;
+            "critical")
+              echo "🎯 Ejecutando critical tests..."
+              npm run test:booking 2>&1 | tee ../test-results-${{ matrix.app }}-critical.log || true
+              ;;
+            "all")
+              echo "🔄 Ejecutando todos los tests..."
+              npm run test:smoke 2>&1 | tee ../test-results-${{ matrix.app }}-smoke.log
+              npm run test:functional 2>&1 | tee ../test-results-${{ matrix.app }}-functional.log || true
+              npm run test:booking 2>&1 | tee ../test-results-${{ matrix.app }}-critical.log || true
+              ;;
+          esac
+
+      - name: Upload Screenshots
+        if: always() && steps.filter-apps.outputs.run_tests == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.app }}-${{ github.event.inputs.test_type }}
+          path: ./apps/${{ matrix.app }}/screenshots/
+          retention-days: 30
+
+      - name: Upload Test Results
+        if: always() && steps.filter-apps.outputs.run_tests == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.app }}-${{ github.event.inputs.test_type }}
+          path: ./apps/test-results-${{ matrix.app }}-*.log
+          retention-days: 30
+
+      - name: Send Slack Notification
+        if: always() && steps.filter-apps.outputs.run_tests == 'true'
+        run: |
+          STATUS="❌ FAILED"
+          COLOR="#ff0000"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="✅ SUCCESS"
+            COLOR="#00ff00"
+          fi
+          
+          # Obtener resultados de test
+          TEST_RESULTS=""
+          for log_file in ./apps/test-results-${{ matrix.app }}-*.log; do
+            if [ -f "$log_file" ]; then
+              TEST_RESULTS="${TEST_RESULTS}\n$(tail -n 10 "$log_file")"
+            fi
+          done
+          
+          # Crear payload para Slack
+          PAYLOAD=$(cat <<EOF
+          {
+            "text": "🚀 MaestroAPPSaaS - Testing Report",
+            "attachments": [
+              {
+                "color": "$COLOR",
+                "fields": [
+                  {
+                    "title": "App Tested",
+                    "value": "${{ matrix.app }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Test Type",
+                    "value": "${{ github.event.inputs.test_type }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Status",
+                    "value": "$STATUS",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  }
+                ],
+                "text": "\`\`\`${TEST_RESULTS}\`\`\`"
+              }
+            ]
+          }
+          EOF
+          )
+          
+          # Enviar a Slack (ajustar webhook URL)
+          curl -X POST \
+            -H 'Content-type: application/json' \
+            -d "$PAYLOAD" \
+            https://hooks.slack.com/services/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
+
+  summary:
+    needs: maestro-e2e-testing
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Test Summary
+        run: |
+          echo "🎯 MaestroAPPSaaS Testing Complete"
+          echo "Test Type: ${{ github.event.inputs.test_type }}"
+          echo "Apps: ${{ github.event.inputs.apps_to_test }}"
+          echo "Status: ${{ needs.maestro-e2e-testing.result }}"

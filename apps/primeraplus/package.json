@@ -7,11 +7,12 @@
   "scripts": {
     "setup": "mkdir -p screenshots/primeraplus && adb devices",
     
-    "test:smoke": "maestro test .maestro/flows/primeraplus/basic/01-app-launch.yaml",
-    "test:search": "maestro test .maestro/flows/primeraplus/functional/02-search-only.yaml", 
-    "test:seats": "maestro test .maestro/flows/primeraplus/functional/03-seat-selection.yaml",
-    "test:booking": "maestro test .maestro/flows/primeraplus/complete-booking-flow.yaml",
-    "test:all": "maestro test .maestro/flows/primeraplus/",
+    "test:smoke": "maestro test .maestro/flows/basic/01-app-launch.yaml",
+    "test:functional": "maestro test .maestro/flows/functional/",
+    "test:search": "maestro test .maestro/flows/functional/02-search-only.yaml", 
+    "test:seats": "maestro test .maestro/flows/functional/03-seat-selection.yaml",
+    "test:booking": "maestro test .maestro/flows/critical/complete-booking-flow.yaml",
+    "test:all": "maestro test .maestro/flows/",
     "test:critical": "maestro test --tags critical .maestro/flows/",
     
     "test:watch": "maestro test --continuous .maestro/flows/primeraplus/basic/",
